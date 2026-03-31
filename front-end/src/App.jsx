@@ -1,4 +1,5 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
+import Register from "./pages/Register";
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import Leads from "./pages/Leads";
@@ -15,7 +16,8 @@ function App() {
   return (
     <BrowserRouter>
       <Routes>
-        <Route path="/" element={<Login />} />
+        <Route path="/" element={<Register />} />
+        <Route path="/login" element={<Login />} />
 
         <Route element={<PrivateRoute><MainLayout /></PrivateRoute>}>
           <Route path="/dashboard" element={<Dashboard />} />

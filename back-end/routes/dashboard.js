@@ -1,30 +1,52 @@
-const router = require("express").Router();
+const express = require("express");
+const router = express.Router();
 const auth = require("../middleware/auth");
+const Task = require("../models/Task");
 const Lead = require("../models/Lead");
-const Task = require("../models/Task"); 
 
 router.get("/stats", auth, async (req, res) => {
   try {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    const startOfToday = new Date();
+    startOfToday.setHours(0, 0, 0, 0);
 
-    const [totalLeads, qualifiedLeads, tasksDueToday, completedTasks] = await Promise.all([
-      Lead.countDocuments({ isDeleted: false }),
-      Lead.countDocuments({ status: "Qualified", isDeleted: false }),
-      Task.countDocuments({ 
-        dueDate: { $gte: today, $lt: new Date(today.getTime() + 24 * 60 * 60 * 1000) },
-        status: { $ne: "Completed" } 
+    const endOfToday = new Date();
+    endOfToday.setHours(23, 59, 59, 999);
+
+    const [totalLeads, qualifiedLeads, tasksDueToday, completedTasks, pendingTasks] = await Promise.all([
+      Lead.countDocuments({ isDeleted: { $ne: true } }),
+      
+      Lead.countDocuments({ 
+        status: { $regex: /^qualified$/i }, 
+        isDeleted: { $ne: true } 
       }),
-      Task.countDocuments({ status: "Completed" })
+      
+      // ✅ Updated: Only count UNFINISHED tasks for today
+      Task.countDocuments({ 
+        dueDate: { $gte: startOfToday, $lte: endOfToday },
+        status: { $nin: ["Completed", "completed"] }, 
+        isDeleted: { $ne: true } 
+      }),
+      
+      Task.countDocuments({ 
+        status: { $regex: /^completed$/i }, 
+        isDeleted: { $ne: true } 
+      }),
+
+      Task.countDocuments({ 
+        status: { $regex: /^pending$/i }, 
+        isDeleted: { $ne: true } 
+      })
     ]);
 
     res.json({
       totalLeads,
       qualifiedLeads,
       tasksDueToday,
-      completedTasks
+      completedTasks,
+      pendingTasks
     });
   } catch (err) {
+    console.error("Stats Error:", err);
     res.status(500).json({ message: "Error fetching stats" });
   }
 });
